@@ -1,0 +1,1862 @@
+﻿#include <iostream>
+#include <vector>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <math.h>
+#include <windows.h>
+#include <SDL.h>
+#include <SDL_image.h>
+#include <SDL_ttf.h>
+#include <stdio.h>
+#include <string>
+#include <cmath>
+#include<limits.h>
+
+#include<algorithm>
+#include<string.h>
+#include<sstream>
+#include<queue>
+#include <fstream>
+#include<bits/stdc++.h>
+
+using namespace std;
+
+
+int SCREEN_WIDTH = 1920;
+int SCREEN_HEIGHT = 1080;
+
+const int SCREEN_DEPTH = 1040;
+const int tick_count=32;//!Not yet supported
+
+const int shiphitbox_x=50;
+const int shiphitbox_y=50;
+const int laser_speed=20;
+const int ship_laser_cooldown=10;
+
+int enemyspawncooldown=100;
+
+const int enemy1hitbox_x=40;
+const int enemy1hitbox_y=40;
+const int enemy1speed=5;
+const int enemy1_laser_cooldown=50;
+
+const int enemy2hitbox_x=50;
+const int enemy2hitbox_y=40;
+const int enemy2speed=3;
+const int enemy2_laser_cooldown=60;
+
+const int enemy3hitbox_x=40;
+const int enemy3hitbox_y=50;
+const int enemy3speed=8;
+
+const int enemy4hitbox_x=50;
+const int enemy4hitbox_y=50;
+const int enemy4speed=1;
+const int enemy4_spawn_cooldown=150;
+const double enemy4_time=10;
+
+const int dronehitbox_x=30;
+const int dronehitbox_y=30;
+const int dronespeed=2;
+const int drone_laser_cooldown=100;
+
+const int enemy5hitbox_x=50;
+const int enemy5hitbox_y=40;
+const int enemy5speed=2;
+const int enemy5_beam_downtime=150;
+const int enemy5_beam_uptime=100;
+const int enemy5_beam_protect_period=15;
+const double enemy5_time=10;
+
+const int bosshitbox_x=200;
+const int bosshitbox_y=200;
+const int boss_stage1_dur=500;
+const int boss_stage1_laser_cooldown=32;
+const int boss_stage2_dur=300;
+const int boss_stage2_beam_protect_period=15;
+const int boss_stage2_beam_downtime=150;
+const int boss_stage2_speed=200;
+const int boss_stage3_dur=60;
+const int boss_stage3_rocket_speed=15;
+const double boss_stage3_rocket_turn=acos(-1);
+const int boss_stage3_rocket_dur=400;
+const int boss_stage3_rocket_r=10;
+const int boss_stage4_dur=500;
+
+int spawn_y;
+
+//mouse position
+int mouse_x;
+int mouse_y;
+
+
+
+string ITS(int a){
+stringstream ss;
+ss<<a;
+return ss.str();
+}
+
+
+class LTexture
+{
+public:
+    LTexture();
+    ~LTexture();
+
+    bool loadFromFile( std::string path );
+    bool loadFromRenderedText( std::string textureText, SDL_Color textColor );
+    void free();
+
+    void render( int x, int y, double angle = 0.0 , SDL_Rect* clip =NULL );
+    void renderText(std::string text);
+    void renderTitle( std::string text );
+    void renderBackground();
+    void setAlpha( Uint8 alpha );
+
+    void bordersCheck();
+
+    int getWidth();
+    int getHeight();
+
+    SDL_Texture* mTexture;
+
+    int mWidth;
+    int mHeight;
+};
+
+
+bool init();
+bool loadMedia();
+void close();
+
+SDL_Window* gWindow = NULL;
+SDL_Renderer* gRenderer = NULL;
+
+TTF_Font *gFont = NULL;
+
+LTexture gTextTexture;
+LTexture gSpaceShipTexture;
+LTexture gBossTexture;
+LTexture gBigbeamTexture;
+LTexture gChargeTexture;
+//!////////////////////////////////////////////////////////////////////
+LTexture gBackgroundTexture;
+vector<LTexture> gLaserTexture;
+vector<LTexture> gEnemy1Texture;
+vector<LTexture> gEnemy2Texture;
+vector<LTexture> gEnemy3Texture;
+vector<LTexture> gEnemy4Texture;
+vector<LTexture> gDroneTexture;
+vector<LTexture> gEnemy5Texture;
+vector<LTexture> gBeamTexture;
+vector<LTexture> gRocketTexture;
+
+SDL_Texture* lasermTexture;
+int lasermWidth;
+int lasermHeight;
+
+SDL_Texture* enemy1mTexture;
+int enemy1mWidth;
+int enemy1mHeight;
+
+SDL_Texture* enemy2mTexture;
+int enemy2mWidth;
+int enemy2mHeight;
+
+SDL_Texture* enemy3mTexture;
+int enemy3mWidth;
+int enemy3mHeight;
+
+SDL_Texture* enemy4mTexture;
+int enemy4mWidth;
+int enemy4mHeight;
+
+SDL_Texture* dronemTexture;
+int dronemWidth;
+int dronemHeight;
+
+SDL_Texture* enemy5mTexture;
+int enemy5mWidth;
+int enemy5mHeight;
+
+SDL_Texture* enemy52mTexture;
+int enemy52mWidth;
+int enemy52mHeight;
+
+SDL_Texture* beammTexture;
+int beammWidth;
+int beammHeight;
+
+SDL_Texture* rocketmTexture;
+int rocketmWidth;
+int rocketmHeight;
+
+LTexture::LTexture()
+{
+    mTexture = NULL;
+    mWidth = 0;
+    mHeight = 0;
+}
+
+LTexture::~LTexture()
+{
+    free();
+}
+
+
+void LTexture::setAlpha( Uint8 alpha )
+{
+	//Modulate texture alpha
+	SDL_SetTextureAlphaMod( mTexture, alpha );
+}
+
+bool LTexture::loadFromFile( std::string path )
+{
+    free();
+
+    SDL_Texture* newTexture = NULL;
+
+    SDL_Surface* loadedSurface = IMG_Load( path.c_str() );
+    if( loadedSurface == NULL )
+    {
+        printf( "Unable to load image %s! SDL_image Error: %s\n", path.c_str(), IMG_GetError() );
+    }
+    else
+    {
+        SDL_SetColorKey( loadedSurface, SDL_TRUE, SDL_MapRGB( loadedSurface->format, 0, 0xFF, 0xFF ) );
+
+        newTexture = SDL_CreateTextureFromSurface( gRenderer, loadedSurface );
+        if( newTexture == NULL )
+        {
+            printf( "Unable to create texture from %s! SDL Error: %s\n", path.c_str(), SDL_GetError() );
+        }
+        else
+        {
+            mWidth = loadedSurface->w;
+            mHeight = loadedSurface->h;
+        }
+        SDL_FreeSurface( loadedSurface );
+    }
+
+    mTexture = newTexture;
+    return mTexture != NULL;
+}
+
+bool loadLaserFromFile( std::string path )
+{
+
+    SDL_Texture* newTexture = NULL;
+
+    SDL_Surface* loadedSurface = IMG_Load( path.c_str() );
+    if( loadedSurface == NULL )
+    {
+        printf( "Unable to load image %s! SDL_image Error: %s\n", path.c_str(), IMG_GetError() );
+    }
+    else
+    {
+        SDL_SetColorKey( loadedSurface, SDL_TRUE, SDL_MapRGB( loadedSurface->format, 0, 0xFF, 0xFF ) );
+
+        newTexture = SDL_CreateTextureFromSurface( gRenderer, loadedSurface );
+        if( newTexture == NULL )
+        {
+            printf( "Unable to create texture from %s! SDL Error: %s\n", path.c_str(), SDL_GetError() );
+        }
+        else
+        {
+            lasermWidth = loadedSurface->w;
+            lasermHeight = loadedSurface->h;
+        }
+        SDL_FreeSurface( loadedSurface );
+    }
+
+    lasermTexture = newTexture;
+
+}
+
+bool loadEnemy1FromFile( std::string path )
+{
+
+    SDL_Texture* newTexture = NULL;
+
+    SDL_Surface* loadedSurface = IMG_Load( path.c_str() );
+    if( loadedSurface == NULL )
+    {
+        printf( "Unable to load image %s! SDL_image Error: %s\n", path.c_str(), IMG_GetError() );
+    }
+    else
+    {
+        SDL_SetColorKey( loadedSurface, SDL_TRUE, SDL_MapRGB( loadedSurface->format, 0, 0xFF, 0xFF ) );
+
+        newTexture = SDL_CreateTextureFromSurface( gRenderer, loadedSurface );
+        if( newTexture == NULL )
+        {
+            printf( "Unable to create texture from %s! SDL Error: %s\n", path.c_str(), SDL_GetError() );
+        }
+        else
+        {
+            enemy1mWidth = loadedSurface->w;
+            enemy1mHeight = loadedSurface->h;
+        }
+        SDL_FreeSurface( loadedSurface );
+    }
+
+    enemy1mTexture = newTexture;
+
+}
+
+bool loadEnemy2FromFile( std::string path )
+{
+
+    SDL_Texture* newTexture = NULL;
+
+    SDL_Surface* loadedSurface = IMG_Load( path.c_str() );
+    if( loadedSurface == NULL )
+    {
+        printf( "Unable to load image %s! SDL_image Error: %s\n", path.c_str(), IMG_GetError() );
+    }
+    else
+    {
+        SDL_SetColorKey( loadedSurface, SDL_TRUE, SDL_MapRGB( loadedSurface->format, 0, 0xFF, 0xFF ) );
+
+        newTexture = SDL_CreateTextureFromSurface( gRenderer, loadedSurface );
+        if( newTexture == NULL )
+        {
+            printf( "Unable to create texture from %s! SDL Error: %s\n", path.c_str(), SDL_GetError() );
+        }
+        else
+        {
+            enemy2mWidth = loadedSurface->w;
+            enemy2mHeight = loadedSurface->h;
+        }
+        SDL_FreeSurface( loadedSurface );
+    }
+
+    enemy2mTexture = newTexture;
+
+}
+
+bool loadEnemy3FromFile( std::string path )
+{
+
+    SDL_Texture* newTexture = NULL;
+
+    SDL_Surface* loadedSurface = IMG_Load( path.c_str() );
+    if( loadedSurface == NULL )
+    {
+        printf( "Unable to load image %s! SDL_image Error: %s\n", path.c_str(), IMG_GetError() );
+    }
+    else
+    {
+        SDL_SetColorKey( loadedSurface, SDL_TRUE, SDL_MapRGB( loadedSurface->format, 0, 0xFF, 0xFF ) );
+
+        newTexture = SDL_CreateTextureFromSurface( gRenderer, loadedSurface );
+        if( newTexture == NULL )
+        {
+            printf( "Unable to create texture from %s! SDL Error: %s\n", path.c_str(), SDL_GetError() );
+        }
+        else
+        {
+            enemy3mWidth = loadedSurface->w;
+            enemy3mHeight = loadedSurface->h;
+        }
+        SDL_FreeSurface( loadedSurface );
+    }
+
+    enemy3mTexture = newTexture;
+
+}
+
+bool loadEnemy4FromFile( std::string path )
+{
+
+    SDL_Texture* newTexture = NULL;
+
+    SDL_Surface* loadedSurface = IMG_Load( path.c_str() );
+    if( loadedSurface == NULL )
+    {
+        printf( "Unable to load image %s! SDL_image Error: %s\n", path.c_str(), IMG_GetError() );
+    }
+    else
+    {
+        SDL_SetColorKey( loadedSurface, SDL_TRUE, SDL_MapRGB( loadedSurface->format, 0, 0xFF, 0xFF ) );
+
+        newTexture = SDL_CreateTextureFromSurface( gRenderer, loadedSurface );
+        if( newTexture == NULL )
+        {
+            printf( "Unable to create texture from %s! SDL Error: %s\n", path.c_str(), SDL_GetError() );
+        }
+        else
+        {
+            enemy4mWidth = loadedSurface->w;
+            enemy4mHeight = loadedSurface->h;
+        }
+        SDL_FreeSurface( loadedSurface );
+    }
+
+    enemy4mTexture = newTexture;
+
+}
+
+bool loadDroneFromFile( std::string path )
+{
+
+    SDL_Texture* newTexture = NULL;
+
+    SDL_Surface* loadedSurface = IMG_Load( path.c_str() );
+    if( loadedSurface == NULL )
+    {
+        printf( "Unable to load image %s! SDL_image Error: %s\n", path.c_str(), IMG_GetError() );
+    }
+    else
+    {
+        SDL_SetColorKey( loadedSurface, SDL_TRUE, SDL_MapRGB( loadedSurface->format, 0, 0xFF, 0xFF ) );
+
+        newTexture = SDL_CreateTextureFromSurface( gRenderer, loadedSurface );
+        if( newTexture == NULL )
+        {
+            printf( "Unable to create texture from %s! SDL Error: %s\n", path.c_str(), SDL_GetError() );
+        }
+        else
+        {
+            dronemWidth = loadedSurface->w;
+            dronemHeight = loadedSurface->h;
+        }
+        SDL_FreeSurface( loadedSurface );
+    }
+
+    dronemTexture = newTexture;
+
+}
+
+bool loadEnemy5FromFile( std::string path )
+{
+
+    SDL_Texture* newTexture = NULL;
+
+    SDL_Surface* loadedSurface = IMG_Load( path.c_str() );
+    if( loadedSurface == NULL )
+    {
+        printf( "Unable to load image %s! SDL_image Error: %s\n", path.c_str(), IMG_GetError() );
+    }
+    else
+    {
+        SDL_SetColorKey( loadedSurface, SDL_TRUE, SDL_MapRGB( loadedSurface->format, 0, 0xFF, 0xFF ) );
+
+        newTexture = SDL_CreateTextureFromSurface( gRenderer, loadedSurface );
+        if( newTexture == NULL )
+        {
+            printf( "Unable to create texture from %s! SDL Error: %s\n", path.c_str(), SDL_GetError() );
+        }
+        else
+        {
+            enemy5mWidth = loadedSurface->w;
+            enemy5mHeight = loadedSurface->h;
+        }
+        SDL_FreeSurface( loadedSurface );
+    }
+
+    enemy5mTexture = newTexture;
+
+}
+
+
+
+bool loadEnemy52FromFile( std::string path )
+{
+
+    SDL_Texture* newTexture = NULL;
+
+    SDL_Surface* loadedSurface = IMG_Load( path.c_str() );
+    if( loadedSurface == NULL )
+    {
+        printf( "Unable to load image %s! SDL_image Error: %s\n", path.c_str(), IMG_GetError() );
+    }
+    else
+    {
+        SDL_SetColorKey( loadedSurface, SDL_TRUE, SDL_MapRGB( loadedSurface->format, 0, 0xFF, 0xFF ) );
+
+        newTexture = SDL_CreateTextureFromSurface( gRenderer, loadedSurface );
+        if( newTexture == NULL )
+        {
+            printf( "Unable to create texture from %s! SDL Error: %s\n", path.c_str(), SDL_GetError() );
+        }
+        else
+        {
+            enemy52mWidth = loadedSurface->w;
+            enemy52mHeight = loadedSurface->h;
+        }
+        SDL_FreeSurface( loadedSurface );
+    }
+
+    enemy52mTexture = newTexture;
+
+}
+
+bool loadBeamFromFile( std::string path )
+{
+
+    SDL_Texture* newTexture = NULL;
+
+    SDL_Surface* loadedSurface = IMG_Load( path.c_str() );
+    if( loadedSurface == NULL )
+    {
+        printf( "Unable to load image %s! SDL_image Error: %s\n", path.c_str(), IMG_GetError() );
+    }
+    else
+    {
+        SDL_SetColorKey( loadedSurface, SDL_TRUE, SDL_MapRGB( loadedSurface->format, 0, 0xFF, 0xFF ) );
+
+        newTexture = SDL_CreateTextureFromSurface( gRenderer, loadedSurface );
+        if( newTexture == NULL )
+        {
+            printf( "Unable to create texture from %s! SDL Error: %s\n", path.c_str(), SDL_GetError() );
+        }
+        else
+        {
+            beammWidth = loadedSurface->w;
+            beammHeight = loadedSurface->h;
+        }
+        SDL_FreeSurface( loadedSurface );
+    }
+
+    beammTexture = newTexture;
+
+}
+
+bool loadRocketFromFile( std::string path )
+{
+
+    SDL_Texture* newTexture = NULL;
+
+    SDL_Surface* loadedSurface = IMG_Load( path.c_str() );
+    if( loadedSurface == NULL )
+    {
+        printf( "Unable to load image %s! SDL_image Error: %s\n", path.c_str(), IMG_GetError() );
+    }
+    else
+    {
+        SDL_SetColorKey( loadedSurface, SDL_TRUE, SDL_MapRGB( loadedSurface->format, 0, 0xFF, 0xFF ) );
+
+        newTexture = SDL_CreateTextureFromSurface( gRenderer, loadedSurface );
+        if( newTexture == NULL )
+        {
+            printf( "Unable to create texture from %s! SDL Error: %s\n", path.c_str(), SDL_GetError() );
+        }
+        else
+        {
+            rocketmWidth = loadedSurface->w;
+            rocketmHeight = loadedSurface->h;
+        }
+        SDL_FreeSurface( loadedSurface );
+    }
+
+    rocketmTexture = newTexture;
+
+}
+
+
+bool LTexture::loadFromRenderedText( std::string textureText, SDL_Color textColor )
+{
+    free();
+
+    SDL_Surface* textSurface = TTF_RenderText_Solid( gFont, textureText.c_str(), textColor );
+    if( textSurface == NULL )
+    {
+        printf( "Unable to render text surface! SDL_ttf Error: %s\n", TTF_GetError() );
+    }
+    else
+    {
+        mTexture = SDL_CreateTextureFromSurface( gRenderer, textSurface );
+        if( mTexture == NULL )
+        {
+            printf( "Unable to create texture from rendered text! SDL Error: %s\n", SDL_GetError() );
+        }
+        else
+        {
+            mWidth = textSurface->w;
+            mHeight = textSurface->h;
+        }
+        SDL_FreeSurface( textSurface );
+    }
+    return mTexture != NULL;
+}
+
+void LTexture::free()
+{
+    if( mTexture != NULL )
+    {
+        //SDL_DestroyTexture( mTexture );
+        mTexture = NULL;
+        mWidth = 0;
+        mHeight = 0;
+    }
+}
+
+void LTexture::render( int x, int y, double angle, SDL_Rect* clip )
+{
+
+
+
+
+
+    int newX,newY;
+    SDL_Rect renderQuad;
+
+
+    newX = x + SCREEN_WIDTH/2;//+960;
+    newY = y + SCREEN_HEIGHT/2;//+540;
+    renderQuad = { newX-mWidth/2, newY-mHeight/2, mWidth, mHeight };
+
+    //Set clip rendering dimensions
+    /*
+    if( clip != NULL )
+    {
+    	renderQuad.w = clip->w;
+    	renderQuad.h = clip->h;
+    }
+    */
+
+    SDL_Point* center = NULL;
+    SDL_RendererFlip flip = SDL_FLIP_NONE;
+
+    //Render to screen
+    SDL_RenderCopyEx( gRenderer, mTexture, clip, &renderQuad, angle, center, flip );
+}
+
+void LTexture::renderText( std::string text )
+{
+    SDL_Color textColor = { 0xFF, 0xFF, 0xFF };
+    if( !gTextTexture.loadFromRenderedText( text, textColor ) )
+    {
+        printf( "Failed to render text texture!\n" );
+    }
+    SDL_Rect renderQuad = { 0, 0, mWidth, mHeight };
+    SDL_RenderCopy( gRenderer, mTexture, NULL, &renderQuad );
+}
+
+void LTexture::renderTitle( std::string text )
+{
+    SDL_Color textColor = { 0xFF, 0xFF, 0xFF };
+    if( !gTextTexture.loadFromRenderedText( text, textColor ) )
+    {
+        printf( "Failed to render text texture!\n" );
+    }
+    //cout<<0+SCREEN_WIDTH/2-mWidth*1.5<<" "<<0+SCREEN_HEIGHT/2-mHeight*1.5<<endl;
+    SDL_Rect renderQuad = { 0+SCREEN_WIDTH/2-mWidth*1.5, 0+SCREEN_HEIGHT/2-mHeight*1.5, mWidth*3, mHeight*3 };
+    SDL_RenderCopy( gRenderer, mTexture, NULL, &renderQuad );
+}
+
+void LTexture::renderBackground()
+{
+
+
+    SDL_Rect renderQuad;
+
+
+
+
+    renderQuad = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
+
+    SDL_Rect* clip = NULL;
+    SDL_RenderCopy( gRenderer, mTexture, clip, &renderQuad );
+
+}
+
+
+
+int LTexture::getWidth()
+{
+    return mWidth;
+}
+
+int LTexture::getHeight()
+{
+    return mHeight;
+}
+
+bool init()
+{
+    bool success = true;
+
+    if( SDL_Init( SDL_INIT_VIDEO ) < 0 )
+    {
+        printf( "SDL could not initialize! SDL Error: %s\n", SDL_GetError() );
+        success = false;
+    }
+    else
+    {
+        if( !SDL_SetHint( SDL_HINT_RENDER_SCALE_QUALITY, "1" ) )
+        {
+            printf( "Warning: Linear texture filtering not enabled!" );
+        }
+
+        gWindow = SDL_CreateWindow( "SDL_Main", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN );
+        if( gWindow == NULL )
+        {
+            printf( "Window could not be created! SDL Error: %s\n", SDL_GetError() );
+            success = false;
+        }
+        else
+        {
+            gRenderer = SDL_CreateRenderer( gWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC );
+            if( gRenderer == NULL )
+            {
+                printf( "Renderer could not be created! SDL Error: %s\n", SDL_GetError() );
+                success = false;
+            }
+            else
+            {
+                SDL_SetRenderDrawColor( gRenderer, 0xFF, 0xFF, 0xFF, 0xFF );
+
+                int imgFlags = IMG_INIT_PNG;
+                if( !( IMG_Init( imgFlags ) & imgFlags ) )
+                {
+                    printf( "SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError() );
+                    success = false;
+                }
+
+                if( TTF_Init() == -1 )
+                {
+                    printf( "SDL_ttf could not initialize! SDL_ttf Error: %s\n", TTF_GetError() );
+                    success = false;
+                }
+            }
+        }
+    }
+    //SDL_WM_SetCaption( "Button Test", NULL );
+    return success;
+}
+
+bool loadAdditionalLaser()/*!...!*/
+{
+    bool success = true;
+    gLaserTexture.push_back(LTexture());
+    gLaserTexture.back().mTexture=lasermTexture;
+    gLaserTexture.back().mWidth=lasermWidth/103.0*47.0;
+    gLaserTexture.back().mHeight=lasermHeight/103.0*47.0;
+    //gLaserTexture[gLaserTexture.size()-1].mHeight*=5;
+    //gLaserTexture[gLaserTexture.size()-1].mWidth*=5;
+    //cout <<"a";
+    return success;
+}
+
+bool loadAdditionalEnemy1()/*!...!*/
+{
+    bool success = true;
+    gEnemy1Texture.push_back(LTexture());
+    gEnemy1Texture.back().mTexture=enemy1mTexture;
+    gEnemy1Texture.back().mWidth=enemy1mWidth/(100/8)*500/256;
+    gEnemy1Texture.back().mHeight=enemy1mHeight/(100/8)*500/256;
+    //gLaserTexture[gLaserTexture.size()-1].mHeight*=5;
+    //gLaserTexture[gLaserTexture.size()-1].mWidth*=5;
+    //cout <<"a";
+    return success;
+}
+
+
+bool loadAdditionalEnemy2()/*!...!*/
+{
+    bool success = true;
+    gEnemy2Texture.push_back(LTexture());
+    gEnemy2Texture.back().mTexture=enemy2mTexture;
+    gEnemy2Texture.back().mWidth=enemy2mWidth/(100/8)*500/338;
+    gEnemy2Texture.back().mHeight=enemy2mHeight/(100/8)*500/338;
+    //gLaserTexture[gLaserTexture.size()-1].mHeight*=5;
+    //gLaserTexture[gLaserTexture.size()-1].mWidth*=5;
+    //cout <<"a";
+    return success;
+}
+
+bool loadAdditionalEnemy3()/*!...!*/
+{
+    bool success = true;
+    gEnemy3Texture.push_back(LTexture());
+    gEnemy3Texture.back().mTexture=enemy3mTexture;
+    gEnemy3Texture.back().mWidth=enemy3mWidth/(100/8)*500/275;
+    gEnemy3Texture.back().mHeight=enemy3mHeight/(100/8)*500/275;
+    //gLaserTexture[gLaserTexture.size()-1].mHeight*=5;
+    //gLaserTexture[gLaserTexture.size()-1].mWidth*=5;
+    //cout <<"a";
+    return success;
+}
+
+bool loadAdditionalEnemy4()/*!...!*/
+{
+    bool success = true;
+    gEnemy4Texture.push_back(LTexture());
+    gEnemy4Texture.back().mTexture=enemy4mTexture;
+    gEnemy4Texture.back().mWidth=enemy4mWidth/(100/8)*500/225;
+    gEnemy4Texture.back().mHeight=enemy4mHeight/(100/8)*500/225;
+    //gLaserTexture[gLaserTexture.size()-1].mHeight*=5;
+    //gLaserTexture[gLaserTexture.size()-1].mWidth*=5;
+    //cout <<"a";
+    return success;
+}
+
+bool loadAdditionalDrone()/*!...!*/
+{
+    bool success = true;
+    gDroneTexture.push_back(LTexture());
+    gDroneTexture.back().mTexture=dronemTexture;
+    gDroneTexture.back().mWidth=dronemWidth/(100/8)*300/260;
+    gDroneTexture.back().mHeight=dronemHeight/(100/8)*300/260;
+    //gLaserTexture[gLaserTexture.size()-1].mHeight*=5;
+    //gLaserTexture[gLaserTexture.size()-1].mWidth*=5;
+    //cout <<"a";
+    return success;
+}
+
+bool loadAdditionalEnemy5()/*!...!*/
+{
+    bool success = true;
+    gEnemy5Texture.push_back(LTexture());
+    gEnemy5Texture.back().mTexture=enemy5mTexture;
+    gEnemy5Texture.back().mWidth=enemy5mWidth/(100/8)*500/225;
+    gEnemy5Texture.back().mHeight=enemy5mHeight/(100/8)*500/225;
+    //gLaserTexture[gLaserTexture.size()-1].mHeight*=5;
+    //gLaserTexture[gLaserTexture.size()-1].mWidth*=5;
+    //cout <<"a";
+    return success;
+}
+
+bool loadAdditionalBeam()/*!...!*/
+{
+    bool success = true;
+    gBeamTexture.push_back(LTexture());
+    gBeamTexture.back().mTexture=beammTexture;
+    gBeamTexture.back().mWidth=10;//beammWidth;
+    gBeamTexture.back().mHeight=beammHeight;
+    //gLaserTexture[gLaserTexture.size()-1].mHeight*=5;
+    //gLaserTexture[gLaserTexture.size()-1].mWidth*=5;
+    //cout <<"a";
+    return success;
+}
+
+bool loadAdditionalRocket()/*!...!*/
+{
+    bool success = true;
+    gRocketTexture.push_back(LTexture());
+    gRocketTexture.back().mTexture=rocketmTexture;
+    gRocketTexture.back().mWidth=rocketmWidth;
+    gRocketTexture.back().mHeight=rocketmHeight;
+    gRocketTexture[gRocketTexture.size()-1].mHeight/=5;
+    gRocketTexture[gRocketTexture.size()-1].mWidth/=5;
+    //cout <<"a";
+    return success;
+}
+
+bool loadMedia()//!////////////////////////////////////////////////////////////////////
+{
+    bool success = true;
+     loadLaserFromFile("Textures/laser.png");
+     loadEnemy1FromFile("Textures/enemy1.png");
+     loadEnemy2FromFile("Textures/enemy2.png");
+     loadEnemy3FromFile("Textures/enemy3.png");
+     loadEnemy4FromFile("Textures/enemy4.png");
+     loadDroneFromFile("Textures/drone.png");
+     loadEnemy5FromFile("Textures/enemy5.png");
+     loadBeamFromFile("Textures/beam.png");
+      loadEnemy52FromFile("Textures/enemy5(2).png");
+    loadRocketFromFile("Textures/rocket.png");
+
+    if( !gBossTexture.loadFromFile( "Textures/boss.png" ) )
+    {
+        printf( "Failed to load boss texture image!\n" );
+        success = false;
+    }
+    gBossTexture.mHeight/=3;
+    gBossTexture.mWidth/=3;
+
+
+    if( !gChargeTexture.loadFromFile( "Textures/charge.png" ) )
+    {
+        printf( "Failed to load boss texture image!\n" );
+        success = false;
+    }
+    gChargeTexture.mHeight/=6;
+    gChargeTexture.mWidth/=6;
+
+    if( !gBigbeamTexture.loadFromFile( "Textures/bigbeam.png" ) )
+    {
+        printf( "Failed to load boss texture image!\n" );
+        success = false;
+    }
+    gBigbeamTexture.mHeight*=2;
+    gBigbeamTexture.mWidth*=2;
+    if( !gBackgroundTexture.loadFromFile( "Textures/background.png" ) )
+    {
+        printf( "Failed to load background texture image!\n" );
+        success = false;
+    }
+
+
+    if( !gSpaceShipTexture.loadFromFile( "Textures/spaceship.png" ) )
+    {
+        printf( "Failed to load spaceship texture image!\n" );
+        success = false;
+    }
+    gSpaceShipTexture.mHeight/=100/8;
+    gSpaceShipTexture.mWidth/=100/8;
+    gSpaceShipTexture.mHeight/=304.0/500.0;
+    gSpaceShipTexture.mWidth/=304.0/500.0;
+
+    gFont = TTF_OpenFont( "Fonts/airstrike.ttf", 16 );
+    if( gFont == NULL )
+    {
+        printf( "Failed to load font! SDL_ttf Error: %s\n", TTF_GetError() );
+        success = false;
+    }
+
+    return success;
+}
+
+
+void SetMonitorspecs()
+{
+    SDL_DisplayMode current;
+
+
+    int should_be_zero = SDL_GetCurrentDisplayMode(0, &current);
+
+    if(should_be_zero != 0)
+    {
+
+        printf("Could not get display mode for video display ", SDL_GetError());
+
+    }
+    else
+    {
+        SCREEN_WIDTH = current.w;
+        SCREEN_HEIGHT = current.h;
+    }
+
+}
+
+void close()
+{
+
+
+    SDL_DestroyTexture( gTextTexture.mTexture );
+SDL_DestroyTexture( gSpaceShipTexture.mTexture );
+SDL_DestroyTexture( gBossTexture.mTexture );
+SDL_DestroyTexture( gBigbeamTexture.mTexture );
+SDL_DestroyTexture( gChargeTexture.mTexture );
+//!////////////////////////////////////////////////////////////////////
+SDL_DestroyTexture( gBackgroundTexture.mTexture);
+
+SDL_DestroyTexture(  lasermTexture);
+
+SDL_DestroyTexture(  enemy1mTexture);
+
+SDL_DestroyTexture(  enemy2mTexture);
+
+SDL_DestroyTexture(  enemy3mTexture);
+
+SDL_DestroyTexture(  enemy4mTexture);
+
+SDL_DestroyTexture(  dronemTexture);
+
+SDL_DestroyTexture(  enemy5mTexture);
+
+SDL_DestroyTexture(  enemy52mTexture);
+
+SDL_DestroyTexture(  beammTexture);
+
+SDL_DestroyTexture(  rocketmTexture);
+
+
+
+
+
+    gTextTexture.free();
+    gSpaceShipTexture.free();
+gBossTexture.free();
+gBigbeamTexture.free();
+gChargeTexture.free();
+
+    gLaserTexture.clear();//!////////////////////////////////////////////////////////////////////
+    gEnemy1Texture.clear();
+gEnemy2Texture.clear();
+gEnemy3Texture.clear();
+gEnemy4Texture.clear();
+gDroneTexture.clear();
+gEnemy5Texture.clear();
+gBeamTexture.clear();
+gRocketTexture.clear();
+
+    TTF_CloseFont( gFont );
+    gFont = NULL;
+
+    SDL_DestroyRenderer( gRenderer );
+    SDL_DestroyWindow( gWindow );
+    gWindow = NULL;
+    gRenderer = NULL;
+
+    TTF_Quit();
+    IMG_Quit();
+    SDL_Quit();
+}
+
+class spaceship
+{
+public:
+    double x=0;
+    double y=0;
+    int health=10;
+    double laser_cooldown=0;
+};
+
+class enemy1
+{
+public:
+    double x=0;
+    double y=0;
+    double laser_cooldown=30;
+};
+
+
+class enemy2
+{
+public:
+    double x=0;
+    double y=0;
+    double laser_cooldown=30;
+};
+
+class enemy3
+{
+public:
+    double x=0;
+    double y=0;
+    double laser_cooldown=0;
+};
+
+class enemy4
+{
+public:
+    double x=0;
+    double y=0;
+    double spawn_cooldown=100;
+    double time=0;
+};
+
+class drone
+{
+public:
+    double x=0;
+    double y=0;
+    double laser_cooldown=50;
+};
+
+class enemy5
+{
+public:
+    double x=0;
+    double y=0;
+    double beam_downtime=100;
+    double beam_uptime=enemy5_beam_uptime;
+    double beam_protect=0;
+    double time=0;
+};
+
+bool boss_alive=false;
+int spawned_boss=0;
+
+class boss
+{
+public:
+    double x;
+    double y;
+    double angle;
+    int health=50;
+    int stage=-1;
+    double stage_duration=0;
+    double stage1_laser_cooldown=0;
+    double stage2_beam_protect=0;
+};
+
+class rocket
+{
+public:
+    double x;
+    double y;
+    double angle;
+    double duration=boss_stage3_rocket_dur;
+};
+
+class laser
+{
+public:
+    double x;
+    double y;
+    double angle;
+    int side;
+};
+
+
+int main(int argc, char *argv[])
+{
+//    timeBeginPeriod(1);
+    std::iostream::sync_with_stdio(false);
+    double pi=acos(-1);
+
+    if( !init() )
+    {
+        printf( "Failed to initialize!\n" );
+    }
+    else
+    {
+
+        SetMonitorspecs();
+        spawn_y=SCREEN_HEIGHT*-99/200;
+        //cout<<"a";
+        if( !loadMedia() )
+        {
+            printf( "Failed to load media!\n" );
+        }
+        else
+        {
+            bool quit = false;
+            SDL_Event event;
+
+            double degrees = 0.0;
+            /**/
+
+//            vector<spaceship> spaceships;
+            bool mouse_click=false;
+            int t0;
+            srand(time(NULL));
+            /**/
+            clock_t timer;
+            while(true){
+            while( SDL_PollEvent( &event )){
+                                        if( event.type == SDL_QUIT )
+                                        {
+                                        quit = true;
+                                        }
+                                        else
+                                        if(event.type == SDL_KEYDOWN){
+
+                                            goto out2;
+                                        }
+                                            SDL_SetRenderDrawColor( gRenderer, 0xFF, 0xFF, 0xFF, 0xFF );
+                                            SDL_RenderClear( gRenderer );
+                                            gBackgroundTexture.renderBackground();
+                                            gTextTexture.renderTitle("Start");//!///////////////////////////////////
+                                            gTextTexture.renderText("Press any key to start");
+                                            //gSpaceShipTexture.render(myship.x,myship.y);
+                                            SDL_RenderPresent( gRenderer );
+
+
+            }
+            }
+            out2:
+            int score=0;
+
+            spaceship myship;
+            boss theboss;
+            vector<laser> lasers;
+            vector<enemy1> enemy1s;
+            vector<enemy2> enemy2s;
+            vector<enemy3> enemy3s;
+            vector<enemy4> enemy4s;
+            vector<drone> drones;
+            vector<enemy5> enemy5s;
+            vector<rocket> rockets;
+            t0=1;
+            int spawn_cooldown=enemyspawncooldown;
+            /**/
+
+
+            while(!quit)
+            {
+
+                //cout<<mouse_x<<" "<<mouse_y<<endl;
+                timer=clock();
+                mouse_click=0;
+                //for(int x=0;x<10000;x++){
+                while( SDL_PollEvent( &event ))
+                {//cout<<"a"<<endl;
+                if( event.type == SDL_QUIT )
+                    {
+                        quit = true;
+                    }
+                else
+                if( event.type == SDL_MOUSEBUTTONDOWN )
+                    {
+                        if( event.button.button == SDL_BUTTON_LEFT )
+                        {
+                            mouse_click=true;
+                        }
+                    }
+
+                    else
+                     if( event.type == SDL_KEYDOWN )
+                    {
+                        switch( event.key.keysym.sym )
+                        {
+                        case SDLK_p:
+                            while(true){
+                                while( SDL_PollEvent( &event )){
+                                        if( event.type == SDL_QUIT )
+                                        {
+                                        quit = true;
+                                        }
+                                        else
+                                        if(event.type == SDL_KEYDOWN){
+
+                                            goto out;
+                                        }
+                                            SDL_SetRenderDrawColor( gRenderer, 0xFF, 0xFF, 0xFF, 0xFF );
+                                            SDL_RenderClear( gRenderer );
+                                            gBackgroundTexture.renderBackground();
+                                            gTextTexture.renderTitle("Paused");//!///////////////////////////////////
+                                            gTextTexture.renderText("Press any key to resume");
+                                            gSpaceShipTexture.render(myship.x,myship.y);
+                                            SDL_RenderPresent( gRenderer );
+
+
+                                }
+                            }
+                            out:
+                            break;
+                        default:
+                            break;
+                        }
+                    }
+
+                }//}
+
+                // renderelés kezdete
+                SDL_GetMouseState( &mouse_x, &mouse_y );
+                SDL_SetRenderDrawColor( gRenderer, 0xFF, 0xFF, 0xFF, 0xFF );
+                SDL_RenderClear( gRenderer );
+                // textúrák helyzetének a megadása (középpontból mért vektor (x,y) koordinátáival)
+                gBackgroundTexture.renderBackground(); // a -640, -520 az a ti koordináta rendszeretek szerint a bal felsõ sarok
+
+
+
+                enemyspawncooldown=max((100.0/((t0*(32/tick_count)/20+100)/100.0)),10.0);
+
+
+                if(score>=500+1000*spawned_boss){
+                spawned_boss++;
+                boss_alive=1;
+                theboss.stage1_laser_cooldown=15;
+                lasers.clear();
+                gLaserTexture.clear();
+                enemy1s.clear();
+                gEnemy1Texture.clear();
+                enemy2s.clear();
+                gEnemy2Texture.clear();
+                enemy3s.clear();
+                gEnemy3Texture.clear();
+                enemy4s.clear();
+                gEnemy4Texture.clear();
+                drones.clear();
+                gDroneTexture.clear();
+                enemy5s.clear();
+                gEnemy5Texture.clear();
+                gBeamTexture.clear();
+
+
+
+                };
+
+
+                if(myship.health<=0){goto gameover;}
+                myship.x=(3.0*(32.0/tick_count)*myship.x+mouse_x-SCREEN_WIDTH/2.0)/((32.0/tick_count)*3+1.0);
+                myship.y=(3.0*(32.0/tick_count)*myship.y+mouse_y-SCREEN_HEIGHT/2.0)/((32.0/tick_count)*3+1.0);
+                gSpaceShipTexture.render(myship.x,myship.y,0);
+                if(mouse_click==true && myship.laser_cooldown==0)
+                {
+                    lasers.push_back(laser());
+                    lasers.back().x=myship.x;
+                    lasers.back().y=myship.y;
+                    lasers.back().angle=0;
+                    lasers.back().side=0;
+                    loadAdditionalLaser();
+                    myship.laser_cooldown=ship_laser_cooldown;
+                }
+                if(myship.laser_cooldown!=0)
+                {
+                    myship.laser_cooldown-=(32.0/tick_count);
+                }
+
+
+
+
+
+                if(boss_alive){
+                    if(theboss.stage!=1)theboss.x=0;
+                    theboss.y=spawn_y+150;
+                    if(theboss.stage==0)theboss.angle=-1*atan((myship.x-theboss.x)/(myship.y-theboss.y))+(myship.y-theboss.y>0?pi:0);else theboss.angle=pi;
+
+                       if(theboss.x<myship.x+shiphitbox_x/2+200 && theboss.x>myship.x-shiphitbox_x/2-200 && theboss.y<myship.y+shiphitbox_y/2+100 && theboss.y>myship.y-shiphitbox_y/2-100) { //Hibás de elég jó közelités
+                        myship.health-=10;
+                    }
+                    if(theboss.stage_duration==0){
+                        theboss.stage=rand()%3;
+                        switch(theboss.stage){
+                            case 0:
+                                theboss.stage_duration=boss_stage1_dur;
+                            break;
+                            case 1:
+                                theboss.stage_duration=boss_stage2_dur;
+                            break;
+                            case 2:
+                                /*theboss.stage_duration=boss_stage3_dur;
+                                rockets.push_back(rocket());
+                                rockets.back().x=theboss.x+gBossTexture.mWidth/4;
+                                rockets.back().y=theboss.y+gBossTexture.mHeight/2;
+                                rockets.back().angle=pi;
+                                loadAdditionalRocket();*/
+
+
+                                rockets.push_back(rocket());
+                                rockets.back().x=theboss.x+gBossTexture.mWidth/2;
+                                rockets.back().y=theboss.y+gBossTexture.mHeight/2;
+                                rockets.back().angle=pi;
+                                loadAdditionalRocket();
+
+                                /*rockets.push_back(rocket());
+                                rockets.back().x=theboss.x-gBossTexture.mWidth/4;
+                                rockets.back().y=theboss.y+gBossTexture.mHeight/2;
+                                rockets.back().angle=pi;
+                                loadAdditionalRocket();*/
+
+                                rockets.push_back(rocket());
+                                rockets.back().x=theboss.x-gBossTexture.mWidth/2;
+                                rockets.back().y=theboss.y+gBossTexture.mHeight/2;
+                                rockets.back().angle=pi;
+                                loadAdditionalRocket();
+                                //cout<<"+"<<endl;
+                                break;
+                        }
+                    }else{
+                        theboss.stage_duration-=(32.0/tick_count);
+                        switch(theboss.stage){
+                            case 0:
+                                if(theboss.stage1_laser_cooldown==0){
+                    theboss.stage1_laser_cooldown=boss_stage1_laser_cooldown;
+
+
+                    lasers.push_back(laser());
+                    lasers.back().x=theboss.x;
+                    lasers.back().y=theboss.y;
+                    lasers.back().angle=-1*atan((myship.x-theboss.x)/(myship.y-theboss.y))+(myship.y-theboss.y>0?pi:0);/**/
+                    lasers.back().side=1;
+                    loadAdditionalLaser();
+
+
+                    lasers.push_back(laser());
+                    lasers.back().x=theboss.x;
+                    lasers.back().y=theboss.y;
+                    lasers.back().angle=-1*atan((myship.x-theboss.x)/(myship.y-theboss.y))+(myship.y-theboss.y>0?pi:0)+pi/18;/**/
+                    lasers.back().side=1;
+                    loadAdditionalLaser();
+
+
+                    lasers.push_back(laser());
+                    lasers.back().x=theboss.x;
+                    lasers.back().y=theboss.y;
+                    lasers.back().angle=-1*atan((myship.x-theboss.x)/(myship.y-theboss.y))+(myship.y-theboss.y>0?pi:0)+pi/9;/**/
+                    lasers.back().side=1;
+                    loadAdditionalLaser();
+
+
+                    lasers.push_back(laser());
+                    lasers.back().x=theboss.x;
+                    lasers.back().y=theboss.y;
+                    lasers.back().angle=-1*atan((myship.x-theboss.x)/(myship.y-theboss.y))+(myship.y-theboss.y>0?pi:0)-pi/18;/**/
+                    lasers.back().side=1;
+                    loadAdditionalLaser();
+
+
+                    lasers.push_back(laser());
+                    lasers.back().x=theboss.x;
+                    lasers.back().y=theboss.y;
+                    lasers.back().angle=-1*atan((myship.x-theboss.x)/(myship.y-theboss.y))+(myship.y-theboss.y>0?pi:0)-pi/9;/**/
+                    lasers.back().side=1;
+                    loadAdditionalLaser();
+
+
+                }else theboss.stage1_laser_cooldown-=32.0/tick_count;
+                            break;
+
+                            case 1:
+
+                            theboss.x+=max(-1.0*(double)boss_stage2_speed/tick_count,min((double)boss_stage2_speed/tick_count,myship.x-theboss.x));
+                            //cout<<min(((double)(boss_stage2_dur-theboss.stage_duration)/(double)boss_stage2_beam_downtime*255.0),254.0)<<endl;
+                            gChargeTexture.setAlpha(min(((double)(boss_stage2_dur-theboss.stage_duration)/(double)boss_stage2_beam_downtime*255.0),254.0));
+                            gChargeTexture.render(theboss.x,theboss.y+50);
+                            if(theboss.stage_duration<boss_stage2_dur-boss_stage2_beam_downtime){
+
+                            if(theboss.stage_duration<10){theboss.x-= (theboss.x-0)/2;}else{
+                            gBigbeamTexture.render(theboss.x,theboss.y+gBigbeamTexture.mHeight/2,0);
+                            if(theboss.stage2_beam_protect>0){theboss.stage2_beam_protect-=32.0/tick_count;}
+                            if(theboss.stage2_beam_protect<=0 && myship.x<theboss.x+shiphitbox_x/2+50 && myship.y>theboss.y &&myship.x>theboss.x-shiphitbox_x/2-50 ){
+                            theboss.stage2_beam_protect=boss_stage2_beam_protect_period;
+                            myship.health-=2;
+                            }}
+
+                            }
+
+
+                            break;
+
+                            case 2:
+                                break;
+
+                        }
+
+                    }
+                    gBossTexture.render(theboss.x,theboss.y,theboss.angle/pi*180+180);
+                }
+
+
+
+                for(int x=0; x<lasers.size(); x++)
+                {
+                    lasers[x].x=lasers[x].x-(double)laser_speed*(32.0/tick_count)*cos(lasers[x].angle+pi/2.0);
+                    lasers[x].y=lasers[x].y-(double)laser_speed*(32.0/tick_count)*sin(lasers[x].angle+pi/2.0);
+                    gLaserTexture[x].render(lasers[x].x,lasers[x].y,lasers[x].angle/pi*180);
+
+                /*laser hit checks (enemy(respectivly)) or wall*/
+                if(!( lasers[x].x<SCREEN_WIDTH/2 && lasers[x].x>-SCREEN_WIDTH/2 && lasers[x].y<SCREEN_HEIGHT/2 && lasers[x].y>-SCREEN_HEIGHT/2 )){
+                //cout<<lasers[x].x<<" "<<lasers[x].y <<endl;
+                lasers.erase(lasers.begin()+x);
+                gLaserTexture.erase(gLaserTexture.begin()+x);
+                goto laser_end;
+                }
+
+                if(lasers[x].side==0){
+                for(int y=0;y<enemy1s.size();y++){
+                    if(lasers[x].x<enemy1s[y].x+enemy1hitbox_x/2 && lasers[x].x>enemy1s[y].x-enemy1hitbox_x/2 && lasers[x].y<enemy1s[y].y+enemy1hitbox_y/2 && lasers[x].y>enemy1s[y].y-enemy1hitbox_y/2) {
+                        lasers.erase(lasers.begin()+x);
+                        gLaserTexture.erase(gLaserTexture.begin()+x);
+                        enemy1s.erase(enemy1s.begin()+y);
+                        gEnemy1Texture.erase(gEnemy1Texture.begin()+y);
+                        score+=10;
+                        goto laser_end;
+                    }
+                }
+
+                for(int y=0;y<enemy2s.size();y++){
+                    if(lasers[x].x<enemy2s[y].x+enemy2hitbox_x/2 && lasers[x].x>enemy2s[y].x-enemy2hitbox_x/2 && lasers[x].y<enemy2s[y].y+enemy2hitbox_y/2 && lasers[x].y>enemy2s[y].y-enemy2hitbox_y/2) {
+                        lasers.erase(lasers.begin()+x);
+                        gLaserTexture.erase(gLaserTexture.begin()+x);
+                        enemy2s.erase(enemy2s.begin()+y);
+                        gEnemy2Texture.erase(gEnemy2Texture.begin()+y);
+                        score+=10;
+                        goto laser_end;
+                    }
+                }
+
+                for(int y=0;y<enemy3s.size();y++){
+                    if(lasers[x].x<enemy3s[y].x+enemy3hitbox_x/2 && lasers[x].x>enemy3s[y].x-enemy3hitbox_x/2 && lasers[x].y<enemy3s[y].y+enemy3hitbox_y/2 && lasers[x].y>enemy3s[y].y-enemy3hitbox_y/2) {
+                        lasers.erase(lasers.begin()+x);
+                        gLaserTexture.erase(gLaserTexture.begin()+x);
+                        enemy3s.erase(enemy3s.begin()+y);
+                        gEnemy3Texture.erase(gEnemy3Texture.begin()+y);
+                        score+=10;
+                        goto laser_end;
+                    }
+                }
+                for(int y=0;y<enemy4s.size();y++){
+                    if(lasers[x].x<enemy4s[y].x+enemy4hitbox_x/2 && lasers[x].x>enemy4s[y].x-enemy4hitbox_x/2 && lasers[x].y<enemy4s[y].y+enemy4hitbox_y/2 && lasers[x].y>enemy4s[y].y-enemy4hitbox_y/2) {
+                        lasers.erase(lasers.begin()+x);
+                        gLaserTexture.erase(gLaserTexture.begin()+x);
+                        enemy4s.erase(enemy4s.begin()+y);
+                        gEnemy4Texture.erase(gEnemy4Texture.begin()+y);
+                        score+=10;
+                        goto laser_end;
+                    }
+                }
+                for(int y=0;y<drones.size();y++){
+                    if(lasers[x].x<drones[y].x+dronehitbox_x/2 && lasers[x].x>drones[y].x-dronehitbox_x/2 && lasers[x].y<drones[y].y+dronehitbox_y/2 && lasers[x].y>drones[y].y-dronehitbox_y/2) {
+                        lasers.erase(lasers.begin()+x);
+                        gLaserTexture.erase(gLaserTexture.begin()+x);
+                        drones.erase(drones.begin()+y);
+                        gDroneTexture.erase(gDroneTexture.begin()+y);
+                        score+=3;
+                        goto laser_end;
+                    }
+                }
+                for(int y=0;y<enemy5s.size();y++){
+                    if(lasers[x].x<enemy5s[y].x+enemy5hitbox_x/2 && lasers[x].x>enemy5s[y].x-enemy5hitbox_x/2 && lasers[x].y<enemy5s[y].y+enemy5hitbox_y/2 && lasers[x].y>enemy5s[y].y-enemy5hitbox_y/2) {
+                        lasers.erase(lasers.begin()+x);
+                        gLaserTexture.erase(gLaserTexture.begin()+x);
+                        enemy5s.erase(enemy5s.begin()+y);
+                        gEnemy5Texture.erase(gEnemy5Texture.begin()+y);
+                        gBeamTexture.erase(gBeamTexture.begin()+y);
+                        score+=10;
+                        goto laser_end;
+                    }
+                }
+                if(boss_alive){
+                    if(lasers[x].x<theboss.x+bosshitbox_x/2 && lasers[x].x>theboss.x-bosshitbox_x/2 && lasers[x].y<theboss.y+bosshitbox_y/2 && lasers[x].y>theboss.y-bosshitbox_y/2) {
+                        lasers.erase(lasers.begin()+x);
+                        gLaserTexture.erase(gLaserTexture.begin()+x);
+                        theboss.health--;
+                        if(theboss.health==0){
+                            boss_alive=false;
+                            rockets.clear();
+                            gRocketTexture.clear();
+                            theboss.health=50;
+                            theboss.stage_duration=0;
+                            theboss.stage1_laser_cooldown=0;
+                            theboss.stage2_beam_protect=0;
+                        }
+                        score+=10;
+                        goto laser_end;
+                    }
+                }
+
+                for(int y=0;y<rockets.size();y++){
+                    if(sqrt((lasers[x].x-rockets[y].x)*(lasers[x].x-rockets[y].x)+(lasers[x].y-rockets[y].y)*(lasers[x].y-rockets[y].y))<=boss_stage3_rocket_r) {
+                        lasers.erase(lasers.begin()+x);
+                        gLaserTexture.erase(gLaserTexture.begin()+x);
+                        rockets.erase(rockets.begin()+y);
+                        gRocketTexture.erase(gRocketTexture.begin()+y);
+                        goto laser_end;
+                    }
+                }
+
+                }
+
+                if(lasers[x].side==1){
+
+                    if(lasers[x].x<myship.x+shiphitbox_x/2 && lasers[x].x>myship.x-shiphitbox_x/2 && lasers[x].y<myship.y+shiphitbox_y/2 && lasers[x].y>myship.y-shiphitbox_y/2) {
+                        lasers.erase(lasers.begin()+x);
+                        gLaserTexture.erase(gLaserTexture.begin()+x);
+                        myship.health--;
+
+                        goto laser_end;
+                    }
+
+                }
+                laser_end:;
+                //cout<<"--"<<endl;
+                }
+
+                for(int x=0;x<rockets.size();x++){
+//cout<<"a"<<endl;
+                rockets[x].duration-=32.0/tick_count/tick_count;
+                if(rockets[x].duration<=0){rockets.erase(rockets.begin()+x);
+                        gRocketTexture.erase(gRocketTexture.begin()+x);}
+
+                double v=-1*(rockets[x].angle-(-1.0*atan((myship.x-rockets[x].x)/(myship.y-rockets[x].y))+(myship.y-rockets[x].y>0?pi:0)));
+                while(v>=pi){v-=2*pi;}
+                while(v<-1*pi){v+=2*pi;}
+                rockets[x].angle+=max(-1*(double)boss_stage3_rocket_turn/tick_count,min((double)boss_stage3_rocket_turn/tick_count,v));
+                while(rockets[x].angle<2*pi){rockets[x].angle+=2*pi;}
+                while(rockets[x].angle>=2*pi){rockets[x].angle-=2*pi;}
+                //cout<<"c"<<endl;
+                rockets[x].x=rockets[x].x-(double)boss_stage3_rocket_speed*(32.0/tick_count)*cos(rockets[x].angle+pi/2.0);
+                rockets[x].y=rockets[x].y-(double)boss_stage3_rocket_speed*(32.0/tick_count)*sin(rockets[x].angle+pi/2.0);//cout<<"a2"<<endl;
+                gRocketTexture[x].render(rockets[x].x,rockets[x].y,rockets[x].angle/pi*180);
+
+                if(sqrt((myship.x-rockets[x].x)*(myship.x-rockets[x].x)+(myship.y-rockets[x].y)*(myship.y-rockets[x].y))<=boss_stage3_rocket_r+30) {
+                        rockets.erase(rockets.begin()+x);
+                        gRocketTexture.erase(gRocketTexture.begin()+x);
+                myship.health--;
+                        continue;
+                }
+
+                for(int y=0;y<rockets.size();y++){
+              if(sqrt((rockets[x].x-rockets[y].x)*(rockets[x].x-rockets[y].x)+(rockets[x].y-rockets[y].y)*(rockets[x].y-rockets[y].y))<=boss_stage3_rocket_r*2 && x!= y) {
+                        rockets.erase(rockets.begin()+x);
+                        gRocketTexture.erase(gRocketTexture.begin()+x);
+                        rockets.erase(rockets.begin()+y);
+                        gRocketTexture.erase(gRocketTexture.begin()+y);
+                        //cout<<"bumm "<<x<<" "<<y<<endl;
+                        continue;
+                    }
+                }
+
+                }
+
+
+
+
+                /*!Enemy spawns*/
+                if(spawn_cooldown==0){
+                spawn_cooldown=enemyspawncooldown;
+
+                if(!boss_alive) switch(rand()%5){
+                case 0:
+                enemy1s.push_back(enemy1());
+                enemy1s.back().y=spawn_y;
+                enemy1s.back().x=rand()%(SCREEN_WIDTH-100)+50-SCREEN_WIDTH/2;
+                loadAdditionalEnemy1();
+                break;
+                case 1:
+                enemy2s.push_back(enemy2());
+                enemy2s.back().y=spawn_y;
+                enemy2s.back().x=rand()%(SCREEN_WIDTH-100)+50-SCREEN_WIDTH/2;
+                loadAdditionalEnemy2();
+                break;
+                case 2:
+                enemy3s.push_back(enemy3());
+                enemy3s.back().y=spawn_y;
+                enemy3s.back().x=rand()%(SCREEN_WIDTH-100)+50-SCREEN_WIDTH/2;
+                loadAdditionalEnemy3();
+                break;
+                case 3:
+                enemy4s.push_back(enemy4());
+                enemy4s.back().y=spawn_y;
+                enemy4s.back().time=rand()%(int)enemy4_time;
+                loadAdditionalEnemy4();
+                break;
+                case 4:
+                enemy5s.push_back(enemy5());
+                enemy5s.back().y=spawn_y;
+                enemy5s.back().time=rand()%(int)enemy5_time;
+                loadAdditionalEnemy5();
+                loadAdditionalBeam();
+                }
+
+                }else spawn_cooldown-=32.0/tick_count;
+
+
+                for(int x=0;x<enemy1s.size();x++){
+                if(enemy1s[x].laser_cooldown==0){
+                enemy1s[x].laser_cooldown=enemy1_laser_cooldown;
+
+                    lasers.push_back(laser());
+                    lasers.back().x=enemy1s[x].x;
+                    lasers.back().y=enemy1s[x].y;
+                    lasers.back().angle=pi;
+                    lasers.back().side=1;
+                    loadAdditionalLaser();
+
+                }else enemy1s[x].laser_cooldown-=32.0/tick_count;
+                enemy1s[x].y=enemy1s[x].y+enemy1speed*32.0/tick_count;
+                gEnemy1Texture[x].render(enemy1s[x].x,enemy1s[x].y,0);
+
+                /*hit checks floor, ship*/
+                if(enemy1s[x].y>SCREEN_HEIGHT/2){
+                     enemy1s.erase(enemy1s.begin()+x);
+                    gEnemy1Texture.erase(gEnemy1Texture.begin()+x);
+                    myship.health-=3;
+                }
+                if(enemy1s[x].x<myship.x+shiphitbox_x && enemy1s[x].x>myship.x-shiphitbox_x && enemy1s[x].y<myship.y+shiphitbox_y && enemy1s[x].y>myship.y-shiphitbox_y) { //Hibás de elég jó közelités
+                        enemy1s.erase(enemy1s.begin()+x);
+                    gEnemy1Texture.erase(gEnemy1Texture.begin()+x);
+                        myship.health-=5;
+                }
+
+                }
+
+
+                for(int x=0;x<enemy2s.size();x++){
+                if(enemy2s[x].laser_cooldown==0){
+                enemy2s[x].laser_cooldown=enemy2_laser_cooldown;
+
+                    lasers.push_back(laser());
+                    lasers.back().x=enemy2s[x].x;
+                    lasers.back().y=enemy2s[x].y;
+                    lasers.back().angle=-1*atan((myship.x-enemy2s[x].x)/(myship.y-enemy2s[x].y))+(myship.y-enemy2s[x].y>0?pi:0);/**/
+                    lasers.back().side=1;
+                    loadAdditionalLaser();
+
+                }else enemy2s[x].laser_cooldown-=32.0/tick_count;
+                enemy2s[x].y=enemy2s[x].y+enemy2speed*32.0/tick_count;
+                gEnemy2Texture[x].render(enemy2s[x].x,enemy2s[x].y,0);
+
+                /*hit checks floor, ship*/
+                if(enemy2s[x].y>SCREEN_HEIGHT/2){
+                     enemy2s.erase(enemy2s.begin()+x);
+                    gEnemy2Texture.erase(gEnemy2Texture.begin()+x);
+                    myship.health-=3;
+                }
+                if(enemy2s[x].x<myship.x+shiphitbox_x && enemy2s[x].x>myship.x-shiphitbox_x && enemy2s[x].y<myship.y+shiphitbox_y && enemy2s[x].y>myship.y-shiphitbox_y) { //Hibás de elég jó közelités
+                        enemy2s.erase(enemy2s.begin()+x);
+                    gEnemy2Texture.erase(gEnemy2Texture.begin()+x);
+                        myship.health-=5;
+                }
+
+                }
+
+
+                for(int x=0;x<enemy3s.size();x++){
+
+                enemy3s[x].y=enemy3s[x].y+enemy3speed*32.0/tick_count;
+                gEnemy3Texture[x].render(enemy3s[x].x,enemy3s[x].y,0);
+
+                /*hit checks floor, ship*/
+                if(enemy3s[x].y>SCREEN_HEIGHT/2){
+                     enemy3s.erase(enemy3s.begin()+x);
+                    gEnemy3Texture.erase(gEnemy3Texture.begin()+x);
+                    myship.health-=3;
+                }
+                if(enemy3s[x].x<myship.x+shiphitbox_x && enemy3s[x].x>myship.x-shiphitbox_x && enemy3s[x].y<myship.y+shiphitbox_y && enemy3s[x].y>myship.y-shiphitbox_y) { //Hibás de elég jó közelités
+                        enemy3s.erase(enemy3s.begin()+x);
+                    gEnemy3Texture.erase(gEnemy3Texture.begin()+x);
+                        myship.health-=5;
+                }
+
+                }
+
+
+                for(int x=0;x<enemy4s.size();x++){
+
+                enemy4s[x].y=enemy4s[x].y+enemy4speed*32.0/tick_count;
+                enemy4s[x].time=enemy4s[x].time+1.0/tick_count;
+                enemy4s[x].x= 50+(SCREEN_WIDTH-100.0)*acos(cos(enemy4s[x].time * ((SCREEN_WIDTH-100.0)/enemy4_time)/(SCREEN_WIDTH-100.0) *pi))/pi -SCREEN_WIDTH/2;
+
+                /*ship_spawn*/
+
+                 if(enemy4s[x].spawn_cooldown==0){
+                enemy4s[x].spawn_cooldown=enemy4_spawn_cooldown;
+
+                    drones.push_back(drone());
+                    drones.back().x=enemy4s[x].x;
+                    drones.back().y=enemy4s[x].y;
+                    loadAdditionalDrone();
+
+                }else enemy4s[x].spawn_cooldown-=32.0/tick_count;
+
+
+
+
+
+                gEnemy4Texture[x].render(enemy4s[x].x,enemy4s[x].y,0);
+
+                /*hit checks floor, ship*/
+                if(enemy4s[x].y>SCREEN_HEIGHT/2){
+                     enemy4s.erase(enemy4s.begin()+x);
+                    gEnemy4Texture.erase(gEnemy4Texture.begin()+x);
+                    myship.health-=3;
+                }
+                if(enemy4s[x].x<myship.x+shiphitbox_x && enemy4s[x].x>myship.x-shiphitbox_x && enemy4s[x].y<myship.y+shiphitbox_y && enemy4s[x].y>myship.y-shiphitbox_y) { //Hibás de elég jó közelités
+                        enemy4s.erase(enemy4s.begin()+x);
+                    gEnemy4Texture.erase(gEnemy4Texture.begin()+x);
+                        myship.health-=5;
+                }
+                }
+
+                for(int x=0;x<drones.size();x++){
+                if(drones[x].laser_cooldown==0){
+                drones[x].laser_cooldown=drone_laser_cooldown;
+
+                    lasers.push_back(laser());
+                    lasers.back().x=drones[x].x;
+                    lasers.back().y=drones[x].y;
+                    lasers.back().angle=pi;
+                    lasers.back().side=1;
+                    loadAdditionalLaser();
+
+                }else drones[x].laser_cooldown-=32.0/tick_count;
+                drones[x].y=drones[x].y+dronespeed*32.0/tick_count;
+                gDroneTexture[x].render(drones[x].x,drones[x].y,0);
+
+                /*hit checks floor, ship*/
+                if(drones[x].y>SCREEN_HEIGHT/2){
+                     drones.erase(drones.begin()+x);
+                    gDroneTexture.erase(gDroneTexture.begin()+x);
+                    myship.health-=2;
+                }
+                if(drones[x].x<myship.x+shiphitbox_x && drones[x].x>myship.x-shiphitbox_x && drones[x].y<myship.y+shiphitbox_y && drones[x].y>myship.y-shiphitbox_y) {  //Hibás de elég jó közelités
+                        drones.erase(drones.begin()+x);
+                    gDroneTexture.erase(gDroneTexture.begin()+x);
+                        myship.health-=3;
+                }
+
+                }
+
+
+
+                for(int x=0;x<enemy5s.size();x++){
+
+                enemy5s[x].y=enemy5s[x].y+enemy5speed*32.0/tick_count;
+                enemy5s[x].time=enemy5s[x].time+1.0/tick_count;
+                enemy5s[x].x= 50+(SCREEN_WIDTH-100.0)*acos(cos(enemy5s[x].time * ((SCREEN_WIDTH-100.0)/enemy5_time)/(SCREEN_WIDTH-100.0) *pi))/pi -SCREEN_WIDTH/2;
+
+                /*ship_spawn*/
+
+                 if(enemy5s[x].beam_downtime<=0){
+                    gBeamTexture[x].render(enemy5s[x].x,enemy5s[x].y+gBeamTexture[x].mHeight/2,0);
+                    if(enemy5s[x].beam_uptime<=0){
+                        //cout<<"laser_out";
+                       enemy5s[x].beam_uptime=enemy5_beam_uptime;
+                       enemy5s[x].beam_downtime=enemy5_beam_downtime;
+
+                    gEnemy5Texture[x].mTexture=enemy5mTexture;
+                    gEnemy5Texture[x].mWidth=enemy5mWidth/(100/8)*500/225;
+                    gEnemy5Texture[x].mHeight=enemy5mHeight/(100/8)*500/225;
+
+                    }else {enemy5s[x].beam_uptime-=32.0/tick_count;
+                     if(enemy5s[x].beam_protect<=0 && myship.x<enemy5s[x].x+shiphitbox_x/2+25 && myship.y>enemy5s[x].y &&myship.x>enemy5s[x].x-shiphitbox_x/2-25 ){
+                        enemy5s[x].beam_protect=enemy5_beam_protect_period;
+                        myship.health-=2;
+                        //cout<<"hit";}
+
+                    //cout<<"up"<<enemy5s[x].beam_uptime<<endl;
+                    }}
+                }else {
+                    if(enemy5s[x].beam_downtime==32){
+            gEnemy5Texture[x].mTexture=enemy52mTexture;
+            gEnemy5Texture[x].mWidth=enemy52mWidth/(100/8)*500/225;
+            gEnemy5Texture[x].mHeight=enemy52mHeight/(100/8)*500/225;}
+
+
+                    enemy5s[x].beam_downtime-=32.0/tick_count;/*cout<<"down"<<enemy5s[x].beam_downtime<<endl;*/}
+
+
+                if(enemy5s[x].beam_protect>0)enemy5s[x].beam_uptime-=32.0/tick_count;
+
+
+
+                gEnemy5Texture[x].render(enemy5s[x].x,enemy5s[x].y,0);
+
+
+                /*hit checks floor, ship*/
+                if(enemy5s[x].y>SCREEN_HEIGHT/2){
+                     enemy5s.erase(enemy5s.begin()+x);
+                    gEnemy5Texture.erase(gEnemy5Texture.begin()+x);
+                    gBeamTexture.erase(gBeamTexture.begin()+x);
+                    myship.health-=3;
+                }
+                if(enemy5s[x].x<myship.x+shiphitbox_x && enemy5s[x].x>myship.x-shiphitbox_x && enemy5s[x].y<myship.y+shiphitbox_y && enemy5s[x].y>myship.y-shiphitbox_y) { //Hibás de elég jó közelités
+                        enemy5s.erase(enemy5s.begin()+x);
+                    gEnemy5Texture.erase(gEnemy5Texture.begin()+x);
+                    gBeamTexture.erase(gBeamTexture.begin()+x);
+                        myship.health-=5;
+                }
+                }
+
+
+                if(!boss_alive)t0++;
+
+                timer=clock()-timer;
+                //cout<<"b";
+                if((1.0/tick_count-timer/CLOCKS_PER_SEC)>0)
+                {//cout<<"a";
+                    SDL_Delay((1.0/tick_count- timer/CLOCKS_PER_SEC)*1000);/*!...!*/
+                }
+
+
+                gTextTexture.renderText((string)("Health: "+ITS(myship.health)+"    Score: "+ITS(score)));
+                SDL_RenderPresent( gRenderer );
+
+
+
+            }
+
+
+    if(false){
+    gameover:
+    gTextTexture.renderTitle((string)("Game over \n Score: " + ITS(score)));//!///////////////////////////////////
+    SDL_RenderPresent( gRenderer );
+    Sleep(3000);
+    }
+    }}
+    close();
+    return 0;
+}
+
+

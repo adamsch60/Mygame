@@ -1,0 +1,3 @@
+Art by Skorpio (http://opengameart.org/content/spaceship-4) and Rawdanitsu (http://opengameart.org/users/rawdanitsu) and Soluna Software (http://opengameart.org/users/soluna-software)	
+
+Some of the SDL 2.0 code is from my recent project, but not from my part.
