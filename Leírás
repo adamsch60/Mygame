@@ -1,0 +1,19 @@
+A játék Windowsban fut, én 1980*1060p felbontásnál teszteltem csak, de elvileg sikerült beleprogramoznom alkalmazkodik a kijelzőhöz.
+A játékos egy űrhajót irányít amivel az ellene jövő űrhajókat akarja megállitani, ehhez a bal egérgombbal lőve, el kell pusztitani az ellenséges űrhajókat.
+A játék a start képernyőnél kezdődik ahol egy tetszőleges billentyű inditja a játékot. A játékos életét és elért pontszámát a játék a bal felső sarokban jelzi.
+A "P" billentyű lenyomásával a játék megállítható, de így a játékos csak a saját hajóját látja  a képernyőböl a lehetőség játékbeli kihasználhatósága ellen. Innen a játék újraindítható akármelyik billentyű lenyomásával.
+Az ellenség az elején 5 féle űrhajóbol áll:
+1. Közepesen gyors és maga elé közepes időközönként lő.
+2. Lassú és hosszu időközönként a játékos irányába lő.
+3. Gyors, de nem lő.
+4. Lassú és oldalirányban is mozog és hosszú időközönként az 1. ellenfélhez hasonló drónt készit.
+5. Lassú és oldalirányban is mozog és hosszú időközönként egy lézersugarat lő amelyen áthaladva sebződik a karater.
+Ez az 5 ellenfél véletlenszerü sorrendben és növekvő sebbeséggel támad. Egy ellenség megsemmisitéséért 10 pont jár, egy dróné-ért 3.
+A játékos úgy sebződhet ha, átenged egy űrhajót, eléri a képernyő alját, ezért 10 életpontból 3-at veszit, ha nekimegy egy űrhajónak, ezért 5-öt, ha eltalálja egy lövedék, ezért 1-et, vagy ha belemegy egy lézerbsugárba, ezért 2-őt. A drónnal való ütközés 3 és annak bejutása csak 1 pontlevonással jár.
+500 pont elérése után egy fő ellenség érkezik, ez 50 lövés után pusztul el, minden sikeres lövésért 10 pont jár.
+A főellenség 3 támadást használ megintcsak véletlenszerüen:
+1. Itt 5 lézerből álló ernyőt lő a játékos felé kis időközönként.
+2. Egy nagy lézersugarat lő miközben követi a játékost.
+3. 2 kis követő rakétát lő amik egy kis időután eltünnek, vagy ha a játékos kilövi, illetve ha összeütköznek.
+A főellenség halála után egészen 500 ponttal késöbbig, amikor megint főellenség érkezik, még gyorsabban kis ellenségek érkeznek.
+A játékos halála után a játék kiírja a pontszámot azután 3 másodpercel leáll.
