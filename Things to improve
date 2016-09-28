@@ -1,0 +1,16 @@
+Ezek olyan feature-k amiket ha végtelen sok időm lenne hozzáadnék, nem fontossági sorrendben.
+-Saját koordináta rendszer(nem a képernyőé)
+-Helyi high score táblázat
+-Boss life counter
+-A sebzés vizuális megjelenitése
+-Az fps beállíthatósága
+-A konfiguráció kimozgatása egy külön fájlba.
+-Több boss támadás
+-Több űrhajó(pl.:bombázó(maga mögött bombákat hagy),lézer háló(egy teljes lézer gráf csúcsaiként funkcionáló űrhajók))
+-Upgradek az űrhajónak(pl.:több löveg, +élet, pálya clear)
+-Több kezdő űrhajó(pl.: több élet lassab löveg, lézer sugár lövő kis élet)
+-Jobb hitboxok
+-Jobb képlet az ellenség spawn gyakoriság növekedésére
+-Háttér
+-Történet
+-Sok,sok playtest
