@@ -30,31 +30,31 @@ At the start, there are 5 types of enemy ships:
    - Medium speed.
    - Fires in front at medium intervals.
    <p align="center">
-       <img src="./Spacegame/textures/enemy1.png" height="200"/>
+       <img src="./Spacegame/Textures/enemy1.png" height="200"/>
    </p>
 2. **Type 2:**
    - Slow speed.
    - Fires towards the player at long intervals.
     <p align="center">
-    <img src="./Spacegame/textures/enemy2.png" height="200"/>
+    <img src="./Spacegame/Textures/enemy2.png" height="200"/>
     </p>
 3. 3. **Type 3:**
    - Fast speed.
    - Does not shoot.
    <p align="center">
-       <img src="./Spacegame/textures/enemy3.png" height="200"/>
+       <img src="./Spacegame/Textures/enemy3.png" height="200"/>
    </p>
 4. **Type 4:**
    - Slow speed, moves laterally.
    - Creates a drone similar to Type 1 at long intervals.
    <p align="center">
-       <img src="./Spacegame/textures/enemy4.png" height="200"/>
+       <img src="./Spacegame/Textures/enemy4.png" height="200"/>
     </p>
 5. **Type 5:**
    - Slow speed, moves laterally.
    - Fires a laser beam at long intervals that damages the player upon contact.
    <p align="center">
-       <img src="./Spacegame/textures/enemy5.png" height="200"/>
+       <img src="./Spacegame/Textures/enemy5.png" height="200"/>
    </p>
 ### Enemy Behavior
 
@@ -76,7 +76,7 @@ The player can take damage in the following ways:
 ## Boss Battles
 
 <p align="center">
-    <img src="./Spacegame/textures/boss.png" height="300"/>
+    <img src="./Spacegame/Textures/boss.png" height="300"/>
 </p>
 
 - Upon reaching 500 points, a boss enemy appears.
