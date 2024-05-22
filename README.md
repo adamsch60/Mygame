@@ -15,8 +15,7 @@ The player controls a spaceship and must stop incoming enemy ships by shooting t
 
 ### Player Interface
 
-- The player's health and score are displayed in the top left corner of the screen.
-- Press the "P" key to pause the game. In the pause screen, only the player's ship is visible to prevent exploiting the pause function. Press any key to resume the game.
+The player's health and score are displayed in the top left corner of the screen. Press the <kbd>P<kbd> key to pause the game. In the pause screen, only the player's ship is visible to prevent exploiting the pause function. Press any key to resume the game.
 
 ## Enemies
 
@@ -75,4 +74,22 @@ The player can take damage in the following ways:
 - When the player dies, the final score is displayed.
 - The game will close 3 seconds after displaying the score.
 
-Enjoy playing!
+## Things to Improve
+
+These are features I would add if I had unlimited time, not in order of importance:
+
+- Implementing a custom coordinate system (not based on the screen).
+- Local high score table.
+- Boss life counter.
+- Visual representation of damage.
+- Adjustable frame rate (FPS).
+- Moving configuration settings to a separate file.
+- More boss attacks.
+- More types of spaceships (e.g., bombers that leave bombs behind, laser net ships functioning as nodes of a laser grid).
+- Upgrades for the player’s ship (e.g., more cannons, extra life, screen clear).
+- More starting ships (e.g., ships with more life but slower cannons, laser-beam-shooting ships with less life).
+- Improved hitboxes.
+- Better formula for increasing enemy spawn frequency.
+- Background visuals.
+- Storyline.
+- Extensive playtesting.
