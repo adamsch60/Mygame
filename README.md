@@ -1,5 +1,12 @@
 # Space Shooter Game
 
+
+
+<p align="center" float="left">
+    <img src="./Screenshots/Battle.png" width="40%" />
+    <img src="./Screenshots/Boss battle.png" width="40%" />
+</p>
+
 ## Introduction
 
 This game runs on Windows. It has been tested at a resolution of 1980x1060p, but it should adapt to different screen sizes.
