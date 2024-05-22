@@ -15,7 +15,7 @@ The player controls a spaceship and must stop incoming enemy ships by shooting t
 
 ### Player Interface
 
-The player's health and score are displayed in the top left corner of the screen. Press the <kbd>P<kbd> key to pause the game. In the pause screen, only the player's ship is visible to prevent exploiting the pause function. Press any key to resume the game.
+The player's health and score are displayed in the top left corner of the screen. Press the <kbd>P</kbd> key to pause the game. In the pause screen, only the player's ship is visible to prevent exploiting the pause function. Press any key to resume the game.
 
 ## Enemies
 
